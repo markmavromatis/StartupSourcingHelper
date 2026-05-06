@@ -1,17 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PDFDocument, PDFPage, rgb } from "pdf-lib";
+import { PDFDocument, rgb } from "pdf-lib";
 import { Startup } from "@/app/types";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 export async function POST(request: NextRequest): Promise<Response> {
   try {
     const startup: Startup = await request.json();
 
-    // Create PDF document
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([595, 842]); // A4 size in points
+    // Read template PDF
+    const templatePath = join(process.cwd(), "template", "default_template.pdf");
+    const templateBytes = readFileSync(templatePath);
 
-    // Generate PDF content
-    await generatePDFContent(pdfDoc, page, startup);
+    // Load template PDF
+    const pdfDoc = await PDFDocument.load(templateBytes);
+    const page = pdfDoc.getPage(0);
+    const { width, height } = page.getSize();
+
+    // Fill template with startup data
+    await fillTemplateWithData(pdfDoc, page, startup, width, height);
 
     // Serialize PDF to bytes
     const pdfBytes = await pdfDoc.save();
@@ -31,24 +38,19 @@ export async function POST(request: NextRequest): Promise<Response> {
   } catch (error) {
     console.error("PDF generation error:", error);
     return NextResponse.json(
-      { error: "Failed to generate PDF" },
+      { error: "Failed to generate PDF", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     );
   }
 }
 
-async function generatePDFContent(
-  pdfDoc: PDFDocument,
-  page: PDFPage,
-  startup: Startup
-) {
-  const { width, height } = page.getSize();
+async function fillTemplateWithData(pdfDoc: any, page: any, startup: Startup, width: number, height: number) {
   const margin = 40;
   const lineHeight = 14;
   const fontSize = 9;
   let y = height - margin;
 
-  // Helper function to wrap and draw text
+  // Helper to wrap and draw text
   const drawWrappedText = (
     text: string,
     size: number,
@@ -57,12 +59,10 @@ async function generatePDFContent(
   ) => {
     const lines: string[] = [];
     if (maxWidth) {
-      // Simple word wrapping
       const words = text.split(" ");
       let currentLine = "";
       for (const word of words) {
         const testLine = currentLine ? `${currentLine} ${word}` : word;
-        // Estimate: roughly 2.4 characters per point at size 9
         const estimatedWidth = testLine.length * (size * 0.5);
         if (estimatedWidth > maxWidth && currentLine) {
           lines.push(currentLine);
@@ -99,7 +99,12 @@ async function generatePDFContent(
   y -= 28;
 
   // Short description
-  y = drawWrappedText(startup.shortDescription, 11, rgb(80/255, 80/255, 80/255), width - margin * 2);
+  y = drawWrappedText(
+    startup.shortDescription,
+    11,
+    rgb(80 / 255, 80 / 255, 80 / 255),
+    width - margin * 2
+  );
   y -= 12;
 
   // Divider line
@@ -107,7 +112,7 @@ async function generatePDFContent(
     start: { x: margin, y },
     end: { x: width - margin, y },
     thickness: 1,
-    color: rgb(200/255, 200/255, 200/255),
+    color: rgb(200 / 255, 200 / 255, 200 / 255),
   });
   y -= 15;
 
@@ -135,7 +140,7 @@ async function generatePDFContent(
       x: margin,
       y,
       size: 9,
-      color: rgb(60/255, 60/255, 60/255),
+      color: rgb(60 / 255, 60 / 255, 60 / 255),
     });
 
     page.drawText(value, {
@@ -160,7 +165,12 @@ async function generatePDFContent(
     });
     y -= 14;
 
-    y = drawWrappedText(startup.tags.join(" • "), 9, rgb(80/255, 80/255, 80/255), width - margin * 2);
+    y = drawWrappedText(
+      startup.tags.join(" • "),
+      9,
+      rgb(80 / 255, 80 / 255, 80 / 255),
+      width - margin * 2
+    );
     y -= 8;
   }
 
@@ -181,7 +191,7 @@ async function generatePDFContent(
     start: { x: margin, y },
     end: { x: width - margin, y },
     thickness: 1,
-    color: rgb(200/255, 200/255, 200/255),
+    color: rgb(200 / 255, 200 / 255, 200 / 255),
   });
   y -= 12;
 
@@ -196,6 +206,6 @@ async function generatePDFContent(
     x: margin,
     y,
     size: 8,
-    color: rgb(120/255, 120/255, 120/255),
+    color: rgb(120 / 255, 120 / 255, 120 / 255),
   });
 }
