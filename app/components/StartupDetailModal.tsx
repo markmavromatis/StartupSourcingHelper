@@ -35,7 +35,7 @@ export default function StartupDetailModal({ startup, onClose, onDelete, onUpdat
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate PDF");
+        throw new Error("Failed to generate PowerPoint");
       }
 
       // Create blob and trigger download
@@ -43,14 +43,14 @@ export default function StartupDetailModal({ startup, onClose, onDelete, onUpdat
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${startup.companyName.replace(/\s+/g, "_")}_metadata.pdf`;
+      link.download = `${startup.companyName.replace(/\s+/g, "_")}_Profile.pptx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Export error:", error);
-      alert("Failed to export PDF");
+      alert("Failed to export PowerPoint");
     } finally {
       setExporting(false);
     }
@@ -145,7 +145,7 @@ export default function StartupDetailModal({ startup, onClose, onDelete, onUpdat
               disabled={exporting}
               className="flex-1 text-center bg-green-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              {exporting ? "Exporting..." : "📥 Export PDF"}
+              {exporting ? "Exporting..." : "📊 Export PPT"}
             </button>
             {startup.websiteUrl && (
               <a

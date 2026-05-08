@@ -1,0 +1,47 @@
+{
+  "theme": {
+    "primary": "2563EB",
+    "secondary": "1F2937",
+    "accent": "10B981",
+    "light": "F3F4F6",
+    "white": "FFFFFF",
+    "darkText": "111827",
+    "lightText": "6B7280"
+  },
+  "slides": [
+    {
+      "type": "title",
+      "title": "{{ companyName }}",
+      "subtitle": "{{ shortDescription }}"
+    },
+    {
+      "type": "details",
+      "title": "Company Details",
+      "fields": [
+        { "label": "HQ Location", "value": "{{ hq }}" },
+        { "label": "Founded", "value": "{{ foundingYear }}" },
+        { "label": "Employees", "value": "{{ employees }}" },
+        { "label": "Added Date", "value": "{{ addedDate }}" }
+      ],
+      "includeTags": true
+    },
+    {
+      "type": "description",
+      "title": "About",
+      "content": "{{ longDescription }}"
+    },
+    {
+      "type": "images",
+      "title": "Images",
+      "maxImages": 3
+    },
+    {
+      "type": "additional",
+      "title": "Additional Information",
+      "fields": [
+        { "label": "Website", "value": "{{ websiteUrl }}" },
+        { "label": "Video", "value": "{{ videoUrl }}" }
+      ]
+    }
+  ]
+}
