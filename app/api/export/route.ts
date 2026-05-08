@@ -18,21 +18,28 @@ interface PptConfig {
   }>;
 }
 
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function replaceTemplateVars(text: string, startup: Startup): string {
   let result = text;
 
   // Create a map of all possible field names and their values
   const fieldMappings = [
-    { patterns: ["companyName"], value: startup.companyName },
-    { patterns: ["shortDescription"], value: startup.shortDescription },
-    { patterns: ["longDescription", "description"], value: startup.longDescription },
-    { patterns: ["hq"], value: startup.hq || "—" },
-    { patterns: ["foundingYear"], value: startup.foundingYear?.toString() || "—" },
-    { patterns: ["employees"], value: startup.employees || "—" },
-    { patterns: ["addedDate"], value: startup.addedDate },
-    { patterns: ["websiteUrl"], value: startup.websiteUrl || "" },
-    { patterns: ["videoUrl"], value: startup.videoUrl || "" },
-    { patterns: ["tags"], value: startup.tags.join(", ") },
+    { patterns: ["companyName"], value: escapeXml(startup.companyName) },
+    { patterns: ["shortDescription"], value: escapeXml(startup.shortDescription) },
+    { patterns: ["longDescription", "description"], value: escapeXml(startup.longDescription) },
+    { patterns: ["hq"], value: escapeXml(startup.hq || "—") },
+    { patterns: ["foundingYear"], value: escapeXml(startup.foundingYear?.toString() || "—") },
+    { patterns: ["employees"], value: escapeXml(startup.employees || "—") },
+    { patterns: ["addedDate"], value: escapeXml(startup.addedDate) },
+    { patterns: ["websiteUrl"], value: escapeXml(startup.websiteUrl || "") },
+    { patterns: ["videoUrl"], value: escapeXml(startup.videoUrl || "") },
+    { patterns: ["tags"], value: escapeXml(startup.tags.join(", ")) },
   ];
 
   // Replace each field
@@ -75,8 +82,9 @@ async function loadCustomTemplate(
       let slideXml = await zip.files[slideFile].async("string");
 
       // Merge text nodes to handle split placeholders
-      // Step 1: Remove XML tags between </a:t> and <a:t>
-      slideXml = slideXml.replace(/<\/a:t>(?:\s|<[^>]+>)*<a:t>/g, "");
+      // Step 1: Merge adjacent runs, but stop at paragraph/shape boundaries
+      // to avoid consuming structural XML between unrelated elements.
+      slideXml = slideXml.replace(/<\/a:t>((?!<\/?a:p|<\/p:)(?:\s|<[^>]+>))*<a:t>/g, "");
 
       // Step 2: Handle runs that only contain formatting - merge them too
       slideXml = slideXml.replace(/<\/a:r>\s*<a:r>\s*<a:rPr[^>]*\/>\s*<a:t>/g, "<a:t>");
@@ -93,54 +101,6 @@ async function loadCustomTemplate(
       let updatedXml = replaceTemplateVars(slideXml, startup);
 
       zip.file(slideFile, updatedXml);
-    }
-
-    // Handle images - fetch and add them
-    const images = startup.imageUrls.filter(Boolean).slice(0, 3);
-    let imageCounter = 1;
-
-    for (const imageUrl of images) {
-      try {
-        const imgResponse = await fetch(imageUrl);
-        if (imgResponse.ok) {
-          const arrayBuffer = await imgResponse.arrayBuffer();
-          const buffer = Buffer.from(arrayBuffer);
-          const ext = imageUrl.split(".").pop()?.toLowerCase() || "png";
-
-          // Add image to media folder
-          const mediaPath = `ppt/media/image${imageCounter}.${ext}`;
-          zip.file(mediaPath, buffer);
-
-          imageCounter++;
-        }
-      } catch (e) {
-        console.warn(`Could not fetch image from ${imageUrl}:`, e);
-      }
-    }
-
-    // Update [Content_Types].xml to include media types
-    try {
-      let contentTypesXml = await zip.files["[Content_Types].xml"].async(
-        "string"
-      );
-
-      // Add PNG and JPG if not present
-      if (!contentTypesXml.includes('Extension="png"')) {
-        contentTypesXml = contentTypesXml.replace(
-          "</Types>",
-          '  <Default Extension="png" ContentType="image/png"/>\n</Types>'
-        );
-      }
-      if (!contentTypesXml.includes('Extension="jpg"')) {
-        contentTypesXml = contentTypesXml.replace(
-          "</Types>",
-          '  <Default Extension="jpg" ContentType="image/jpeg"/>\n</Types>'
-        );
-      }
-
-      zip.file("[Content_Types].xml", contentTypesXml);
-    } catch (e) {
-      console.warn("Could not update [Content_Types].xml:", e);
     }
 
     // Generate the modified PPTX
@@ -356,7 +316,7 @@ async function createPresentation(
               h: 0.4,
               fontSize: 11,
               color: theme.primary,
-              underline: true,
+              underline: { style: "sng" },
             });
             yPos += 0.7;
           }
@@ -366,7 +326,7 @@ async function createPresentation(
   }
 
   const pptxBuffer = await pres.write({ outputType: "arraybuffer" });
-  return Buffer.from(pptxBuffer);
+  return Buffer.from(pptxBuffer as ArrayBuffer);
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
@@ -383,7 +343,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         "Content-Disposition": `attachment; filename="${filename}"`,
       });
 
-      return new NextResponse(customPptx, {
+      return new NextResponse(new Uint8Array(customPptx), {
         headers,
         status: 200,
       });
@@ -403,7 +363,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       "Content-Disposition": `attachment; filename="${filename}"`,
     });
 
-    return new NextResponse(pptxBuffer, {
+    return new NextResponse(new Uint8Array(pptxBuffer), {
       headers,
       status: 200,
     });
