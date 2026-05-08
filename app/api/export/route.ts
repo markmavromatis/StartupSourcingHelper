@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PDFDocument, PDFTextField } from "pdf-lib";
+import { PDFDocument, PDFTextField, rgb } from "pdf-lib";
 import { Startup } from "@/app/types";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -67,6 +67,67 @@ export async function POST(request: NextRequest): Promise<Response> {
             }
             break;
           }
+        }
+      }
+    }
+
+    // Add images at the bottom
+    const images = startup.imageUrls.filter(Boolean).slice(0, 3);
+    if (images.length > 0) {
+      const pages = pdfDoc.getPages();
+      let page = pages[pages.length - 1];
+      let { width, height } = page.getSize();
+
+      const imageHeight = 80;
+      const imageWidth = 120;
+      const spacing = 20;
+      const totalWidth = images.length * imageWidth + (images.length - 1) * spacing;
+      const startX = (width - totalWidth) / 2;
+      let currentY = 60;
+
+      // Check if we need a new page
+      if (currentY < imageHeight + 60) {
+        page = pdfDoc.addPage([width, height]);
+        currentY = height - 60;
+      }
+
+      // Fetch and embed images
+      for (let i = 0; i < images.length; i++) {
+        try {
+          const imgResponse = await fetch(images[i]);
+          if (imgResponse.ok) {
+            const arrayBuffer = await imgResponse.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const ext = images[i].split('.').pop()?.toLowerCase() || 'png';
+            let image;
+
+            if (ext === 'png') {
+              image = await pdfDoc.embedPng(buffer);
+            } else if (ext === 'jpg' || ext === 'jpeg') {
+              image = await pdfDoc.embedJpg(buffer);
+            } else {
+              continue;
+            }
+
+            const x = startX + i * (imageWidth + spacing);
+            page.drawImage(image, {
+              x,
+              y: currentY - imageHeight,
+              width: imageWidth,
+              height: imageHeight,
+            });
+
+            // Add URL as text below image
+            const urlText = images[i].substring(0, 30) + (images[i].length > 30 ? '...' : '');
+            page.drawText(urlText, {
+              x,
+              y: currentY - imageHeight - 20,
+              size: 8,
+              color: rgb(0, 0, 255),
+            });
+          }
+        } catch (e) {
+          console.warn(`Could not embed image ${i}:`, e);
         }
       }
     }

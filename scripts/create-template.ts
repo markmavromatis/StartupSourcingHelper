@@ -48,11 +48,13 @@ async function createTemplate() {
   const longDescField = form.createTextField('longDescription');
   longDescField.addToPage(page, {
     x: margin,
-    y: y - 100,
+    y: y - 200,
     width: width - margin * 2,
-    height: 90,
+    height: 180,
   });
-  y -= 110;
+  longDescField.setFontSize(10);
+  longDescField.enableMultiline();
+  y -= 220;
 
   // HQ Location
   page.drawText('HQ Location:', { x: margin, y, size: 11, color: rgb(0, 0, 0) });
