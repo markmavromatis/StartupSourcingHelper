@@ -3,7 +3,7 @@ import JSZip from "jszip";
 import PptxGenJs from "pptxgenjs";
 import { Startup } from "@/app/types";
 import { readFileSync, existsSync } from "fs";
-import { join } from "path";
+import { join, posix } from "path";
 
 interface PptConfig {
   theme: Record<string, string>;
@@ -36,6 +36,7 @@ function replaceTemplateVars(text: string, startup: Startup): string {
     { patterns: ["hq"], value: escapeXml(startup.hq || "—") },
     { patterns: ["foundingYear"], value: escapeXml(startup.foundingYear?.toString() || "—") },
     { patterns: ["employees"], value: escapeXml(startup.employees || "—") },
+    { patterns: ["investments"], value: escapeXml(startup.investments || "—") },
     { patterns: ["addedDate"], value: escapeXml(startup.addedDate) },
     { patterns: ["websiteUrl"], value: escapeXml(startup.websiteUrl || "") },
     { patterns: ["videoUrl"], value: escapeXml(startup.videoUrl || "") },
@@ -101,6 +102,63 @@ async function loadCustomTemplate(
       let updatedXml = replaceTemplateVars(slideXml, startup);
 
       zip.file(slideFile, updatedXml);
+    }
+
+    // Replace or remove placeholder images by reading actual filenames from
+    // slide relationships, so the code works regardless of template image names.
+    const images = startup.imageUrls.filter(Boolean);
+    for (const slideFile of slideFiles) {
+      const relsPath = slideFile
+        .replace("ppt/slides/", "ppt/slides/_rels/")
+        .replace(".xml", ".xml.rels");
+      if (!zip.files[relsPath]) continue;
+
+      const relsXml = await zip.files[relsPath].async("string");
+
+      // Build rId -> media path map for image relationships
+      const relMap: Record<string, string> = {};
+      const relRegex = /Id="([^"]+)"[^>]*Type="[^"]*\/image"[^>]*Target="([^"]+)"/g;
+      let relMatch;
+      while ((relMatch = relRegex.exec(relsXml)) !== null) {
+        const [, id, target] = relMatch;
+        relMap[id] = posix.normalize("ppt/slides/" + target);
+      }
+
+      // Extract p:pic rIds from the slide in document order
+      let slideXml = await zip.files[slideFile].async("string");
+      const picRids: string[] = [];
+      const picRegex = /<p:pic>[\s\S]*?<\/p:pic>/g;
+      let picMatch;
+      while ((picMatch = picRegex.exec(slideXml)) !== null) {
+        const blip = /<a:blip[^>]*r:embed="([^"]+)"/.exec(picMatch[0]);
+        if (blip) picRids.push(blip[1]);
+      }
+
+      for (let i = 0; i < picRids.length; i++) {
+        const mediaPath = relMap[picRids[i]];
+        if (i < images.length) {
+          // Replace with startup image
+          if (!mediaPath) continue;
+          try {
+            const imgResponse = await fetch(images[i]);
+            if (imgResponse.ok) {
+              zip.file(mediaPath, await imgResponse.arrayBuffer());
+            }
+          } catch (e) {
+            console.warn(`Could not fetch image ${images[i]}:`, e);
+          }
+        } else {
+          // No startup image for this slot — remove the shape and its media file
+          const rid = picRids[i];
+          slideXml = slideXml.replace(
+            new RegExp(`<p:pic>(?:(?!<\\/p:pic>)[\\s\\S])*?r:embed="${rid}"[\\s\\S]*?<\\/p:pic>`),
+            ""
+          );
+          if (mediaPath) zip.remove(mediaPath);
+        }
+      }
+
+      zip.file(slideFile, slideXml);
     }
 
     // Generate the modified PPTX

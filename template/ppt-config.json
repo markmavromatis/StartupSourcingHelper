@@ -21,6 +21,7 @@
         { "label": "HQ Location", "value": "{{ hq }}" },
         { "label": "Founded", "value": "{{ foundingYear }}" },
         { "label": "Employees", "value": "{{ employees }}" },
+        { "label": "Total Investment", "value": "{{ investments }}" },
         { "label": "Added Date", "value": "{{ addedDate }}" }
       ],
       "includeTags": true

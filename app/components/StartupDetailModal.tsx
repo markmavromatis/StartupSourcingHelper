@@ -89,6 +89,7 @@ export default function StartupDetailModal({ startup, onClose, onDelete, onUpdat
             <Info label="HQ" value={startup.hq} />
             <Info label="Founded" value={startup.foundingYear?.toString() || "—"} />
             <Info label="Employees" value={startup.employees || "—"} />
+            <Info label="Total Investment" value={startup.investments || "—"} />
             <Info label="Added" value={startup.addedDate} />
           </div>
 

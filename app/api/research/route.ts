@@ -233,6 +233,7 @@ Return ONLY valid JSON — no markdown fences, no explanation, nothing before or
   "hq": "string — City, Country (e.g. 'San Francisco, USA')",
   "foundingYear": number or null,
   "employees": "string — headcount range (e.g. '50–200', '1,000+', '<50')",
+  "investments": "string — total funding raised (e.g. '$5M', '$50–100M', 'undisclosed') or empty string if unknown",
   "imageUrls": ["url1", "url2", "url3"],
   "tags": ["tag1", "tag2"] — 1–4 tags chosen from: ${TAGS.join(", ")}
 }`;

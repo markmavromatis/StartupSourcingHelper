@@ -21,6 +21,7 @@ export interface Startup {
   hq: string;
   foundingYear: number | null;
   employees: string;
+  investments: string;
   videoUrl: string;
   imageUrls: [string, string, string];
   tags: Tag[];

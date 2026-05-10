@@ -20,6 +20,7 @@ const empty = (): Partial<Startup> => ({
   hq: "",
   foundingYear: null,
   employees: "",
+  investments: "",
   videoUrl: "",
   imageUrls: ["", "", ""],
   tags: [],
@@ -71,6 +72,7 @@ export default function AddStartupModal({ onSave, onClose }: Props) {
       hq: form.hq || "",
       foundingYear: form.foundingYear ?? null,
       employees: form.employees || "",
+      investments: form.investments || "",
       videoUrl: form.videoUrl || "",
       imageUrls: form.imageUrls as [string, string, string],
       tags: form.tags || [],
@@ -178,6 +180,17 @@ export default function AddStartupModal({ onSave, onClose }: Props) {
                     placeholder="50–200"
                   />
                 </Field>
+                <Field label="Total Investment">
+                  <input
+                    value={form.investments || ""}
+                    onChange={(e) => setForm({ ...form, investments: e.target.value })}
+                    className="input"
+                    placeholder="$5M"
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <Field label="Website URL">
                   <input
                     value={form.websiteUrl || ""}
