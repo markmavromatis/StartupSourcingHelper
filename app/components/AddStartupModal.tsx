@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Startup, Tag } from "../types";
+import { Startup, Project, Tag } from "../types";
 import TagBadge from "./TagBadge";
 import { v4 as uuidv4 } from "uuid";
 import { API_KEY_STORAGE } from "./ApiKeyModal";
@@ -11,9 +11,11 @@ const ALL_TAGS: Tag[] = ["AI", "BCI", "Enterprise", "Media", "Mobility", "Sustai
 interface Props {
   onSave: (s: Startup) => void;
   onClose: () => void;
+  projects: Project[];
+  defaultProjectId: string;
 }
 
-const empty = (): Partial<Startup> => ({
+const empty = (projectId = ""): Partial<Startup> => ({
   companyName: "",
   shortDescription: "",
   longDescription: "",
@@ -25,13 +27,14 @@ const empty = (): Partial<Startup> => ({
   imageUrls: ["", "", ""],
   tags: [],
   websiteUrl: "",
+  projectId,
 });
 
-export default function AddStartupModal({ onSave, onClose }: Props) {
+export default function AddStartupModal({ onSave, onClose, projects, defaultProjectId }: Props) {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState<Partial<Startup>>(empty());
+  const [form, setForm] = useState<Partial<Startup>>(empty(defaultProjectId));
   const [step, setStep] = useState<"url" | "review">("url");
 
   async function handleResearch() {
@@ -77,6 +80,7 @@ export default function AddStartupModal({ onSave, onClose }: Props) {
       imageUrls: form.imageUrls as [string, string, string],
       tags: form.tags || [],
       websiteUrl: form.websiteUrl || url,
+      projectId: form.projectId || "",
     };
     onSave(startup);
   }
@@ -126,6 +130,19 @@ export default function AddStartupModal({ onSave, onClose }: Props) {
             </>
           ) : (
             <>
+              <Field label="Project">
+                <select
+                  value={form.projectId || ""}
+                  onChange={(e) => setForm({ ...form, projectId: e.target.value })}
+                  className="input"
+                >
+                  <option value="">— Unassigned —</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </Field>
+
               <Field label="Company Name" required>
                 <input
                   value={form.companyName || ""}

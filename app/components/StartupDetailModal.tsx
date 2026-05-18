@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Startup } from "../types";
+import { Startup, Project } from "../types";
 import TagBadge from "./TagBadge";
 import Image from "next/image";
 
@@ -10,9 +10,10 @@ interface Props {
   onClose: () => void;
   onDelete: (id: string) => void;
   onUpdate: (s: Startup) => void;
+  projects: Project[];
 }
 
-export default function StartupDetailModal({ startup, onClose, onDelete, onUpdate }: Props) {
+export default function StartupDetailModal({ startup, onClose, onDelete, onUpdate, projects }: Props) {
   const images = startup.imageUrls.filter(Boolean);
   const [editingVideo, setEditingVideo] = useState(false);
   const [videoInput, setVideoInput] = useState(startup.videoUrl || "");
@@ -91,6 +92,19 @@ export default function StartupDetailModal({ startup, onClose, onDelete, onUpdat
             <Info label="Employees" value={startup.employees || "—"} />
             <Info label="Total Investment" value={startup.investments || "—"} />
             <Info label="Added" value={startup.addedDate} />
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Project</p>
+              <select
+                value={startup.projectId || ""}
+                onChange={(e) => onUpdate({ ...startup, projectId: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-2 py-1 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">— Unassigned —</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>

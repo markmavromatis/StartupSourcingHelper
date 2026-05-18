@@ -12,6 +12,12 @@ export type Tag =
   | "Robotics"
   | "Space";
 
+export interface Project {
+  id: string;
+  name: string;
+  createdDate: string;
+}
+
 export interface Startup {
   id: string;
   addedDate: string;
@@ -26,4 +32,5 @@ export interface Startup {
   imageUrls: [string, string, string];
   tags: Tag[];
   websiteUrl: string;
+  projectId: string;
 }
