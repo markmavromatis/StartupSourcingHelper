@@ -29,6 +29,7 @@ export interface Startup {
   employees: string;
   investments: string;
   videoUrl: string;
+  logoUrl: string;
   imageUrls: [string, string, string];
   tags: Tag[];
   websiteUrl: string;

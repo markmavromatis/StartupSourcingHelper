@@ -12,7 +12,8 @@
     {
       "type": "title",
       "title": "{{ companyName }}",
-      "subtitle": "{{ shortDescription }}"
+      "subtitle": "{{ shortDescription }}",
+      "logoUrl": "{{ logoUrl }}"
     },
     {
       "type": "details",

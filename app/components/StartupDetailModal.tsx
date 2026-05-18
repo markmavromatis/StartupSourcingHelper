@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Startup, Project } from "../types";
 import TagBadge from "./TagBadge";
 import Image from "next/image";
@@ -18,6 +18,14 @@ export default function StartupDetailModal({ startup, onClose, onDelete, onUpdat
   const [editingVideo, setEditingVideo] = useState(false);
   const [videoInput, setVideoInput] = useState(startup.videoUrl || "");
   const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   function saveVideo() {
     onUpdate({ ...startup, videoUrl: videoInput });
@@ -69,6 +77,22 @@ export default function StartupDetailModal({ startup, onClose, onDelete, onUpdat
         </div>
 
         <div className="p-6 space-y-5">
+          {startup.logoUrl && (
+            <div className="flex justify-center">
+              <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden">
+                <Image
+                  src={startup.logoUrl}
+                  alt={`${startup.companyName} logo`}
+                  width={96}
+                  height={96}
+                  className="object-contain w-full h-full"
+                  unoptimized
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              </div>
+            </div>
+          )}
+
           {images.length > 0 && (
             <div className="flex gap-3">
               {images.map((url, i) => (

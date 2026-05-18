@@ -24,6 +24,7 @@ const empty = (projectId = ""): Partial<Startup> => ({
   employees: "",
   investments: "",
   videoUrl: "",
+  logoUrl: "",
   imageUrls: ["", "", ""],
   tags: [],
   websiteUrl: "",
@@ -77,6 +78,7 @@ export default function AddStartupModal({ onSave, onClose, projects, defaultProj
       employees: form.employees || "",
       investments: form.investments || "",
       videoUrl: form.videoUrl || "",
+      logoUrl: form.logoUrl || "",
       imageUrls: form.imageUrls as [string, string, string],
       tags: form.tags || [],
       websiteUrl: form.websiteUrl || url,
@@ -223,6 +225,15 @@ export default function AddStartupModal({ onSave, onClose, projects, defaultProj
                   onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
                   className="input"
                   placeholder="https://youtube.com/..."
+                />
+              </Field>
+
+              <Field label="Company Logo URL">
+                <input
+                  value={form.logoUrl || ""}
+                  onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+                  className="input"
+                  placeholder="https://..."
                 />
               </Field>
 

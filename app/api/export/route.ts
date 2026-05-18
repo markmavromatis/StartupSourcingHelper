@@ -11,6 +11,7 @@ interface PptConfig {
     type: string;
     title?: string;
     subtitle?: string;
+    logoUrl?: string;
     content?: string;
     fields?: Array<{ label: string; value: string }>;
     includeTags?: boolean;
@@ -207,6 +208,31 @@ async function createPresentation(
 
     if (slideDef.type === "title") {
       addTitleBar(slide, pres, replaceTemplateVars(slideDef.title || "", startup), theme);
+
+      // Add logo if available
+      const logoUrl = replaceTemplateVars(slideDef.logoUrl || "", startup);
+      if (logoUrl) {
+        try {
+          const logoResponse = await fetch(logoUrl);
+          if (logoResponse.ok) {
+            const arrayBuffer = await logoResponse.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString("base64");
+            const ext = logoUrl.split(".").pop()?.toLowerCase() || "png";
+            const dataUrl = `data:image/${ext};base64,${base64}`;
+
+            slide.addImage({
+              data: dataUrl,
+              x: 6.5,
+              y: 1.2,
+              w: 2.5,
+              h: 2.5,
+            });
+          }
+        } catch (e) {
+          console.warn("Could not fetch logo:", e);
+        }
+      }
+
       slide.addText(replaceTemplateVars(slideDef.subtitle || "", startup), {
         x: 0.5,
         y: 1.2,

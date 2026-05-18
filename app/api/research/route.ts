@@ -12,6 +12,7 @@ interface PageData {
   videoLinks: string[];
   jsonLd: unknown[];
   bodyText: string;
+  linkedinUrl?: string;
 }
 
 function extractVideoLinks($: ReturnType<typeof cheerio.load>, baseUrl: string): string[] {
@@ -57,6 +58,26 @@ async function fetchVideoMeta(videoUrl: string): Promise<{ url: string; text: st
     return { url: videoUrl, text: "" };
   }
 }
+
+async function fetchCompanyLogo(linkedinUrl: string | undefined, imageUrls: string[]): Promise<string> {
+  if (linkedinUrl) {
+    try {
+      const res = await fetch(linkedinUrl, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; StartupResearcher/1.0)" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (res.ok) {
+        const html = await res.text();
+        const $ = cheerio.load(html);
+        const ogImage = $('meta[property="og:image"]').attr("content");
+        if (ogImage) return ogImage;
+      }
+    } catch {
+    }
+  }
+  return imageUrls[0] || "";
+}
+
 
 async function searchYouTube(companyName: string): Promise<string[]> {
   const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(companyName)}`;
@@ -121,6 +142,16 @@ async function scrapePage(url: string): Promise<PageData> {
     }
   });
 
+  // Extract LinkedIn URL before stripping footer/nav (social links live there)
+  let linkedinUrl: string | undefined;
+  $("a[href]").each((_, el) => {
+    if (linkedinUrl) return;
+    const href = $(el).attr("href") || "";
+    if (/linkedin\.com\/company\//i.test(href)) {
+      try { linkedinUrl = new URL(href, url).href.split("?")[0]; } catch {}
+    }
+  });
+
   $("script, style, nav, footer, header").remove();
   const bodyText = $("body").text().replace(/\s+/g, " ").trim().slice(0, 8000);
   const title = $("title").text();
@@ -157,7 +188,7 @@ async function scrapePage(url: string): Promise<PageData> {
       aboutVideoLinks.forEach((v) => { if (!videoLinks.includes(v)) videoLinks.push(v); });
       $a("script, style, nav, footer, header").remove();
       const aboutText = $a("body").text().replace(/\s+/g, " ").trim().slice(0, 3000);
-      return { title, metaDesc, images, videoLinks, jsonLd, bodyText: bodyText + " [ABOUT PAGE] " + aboutText };
+      return { title, metaDesc, images, videoLinks, jsonLd, bodyText: bodyText + " [ABOUT PAGE] " + aboutText, linkedinUrl };
     } catch {}
   }
 
@@ -167,11 +198,11 @@ async function scrapePage(url: string): Promise<PageData> {
   if (bodyText.length < 300) {
     try {
       const jinaText = await fetchViaJina(url);
-      return { title, metaDesc, images, videoLinks, jsonLd, bodyText: jinaText.slice(0, 10000) };
+      return { title, metaDesc, images, videoLinks, jsonLd, bodyText: jinaText.slice(0, 10000), linkedinUrl };
     } catch {}
   }
 
-  return { title, metaDesc, images, videoLinks, jsonLd, bodyText };
+  return { title, metaDesc, images, videoLinks, jsonLd, bodyText, linkedinUrl };
 }
 
 export async function POST(req: NextRequest) {
@@ -183,8 +214,9 @@ export async function POST(req: NextRequest) {
 
   let pageDataStr = `{"error": "Could not fetch page", "url": "${url}"}`;
   let resolvedVideoUrl = "";
+  let pageData: PageData | undefined;
   try {
-    const pageData = await scrapePage(url);
+    pageData = await scrapePage(url);
 
     // Verify page-scraped video links via oEmbed before trusting them
     const companyName = companyNameFromUrl(url);
@@ -258,6 +290,10 @@ Return ONLY valid JSON — no markdown fences, no explanation, nothing before or
   while (parsed.imageUrls.length < 3) parsed.imageUrls.push("");
   parsed.imageUrls = parsed.imageUrls.slice(0, 3);
   parsed.videoUrl = resolvedVideoUrl;
+
+  // Fetch company logo from LinkedIn og:image (with fallback to first scraped image)
+  const logoUrl = await fetchCompanyLogo(pageData?.linkedinUrl, parsed.imageUrls);
+  parsed.logoUrl = logoUrl;
 
   return NextResponse.json(parsed);
 }
