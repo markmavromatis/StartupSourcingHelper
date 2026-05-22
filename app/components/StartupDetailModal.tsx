@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Startup, Project } from "../types";
 import TagBadge from "./TagBadge";
 import Image from "next/image";
+import { API_KEY_STORAGE } from "./ApiKeyModal";
 
 interface Props {
   startup: Startup;
@@ -18,6 +19,8 @@ export default function StartupDetailModal({ startup, onClose, onDelete, onUpdat
   const [editingVideo, setEditingVideo] = useState(false);
   const [videoInput, setVideoInput] = useState(startup.videoUrl || "");
   const [exporting, setExporting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState("");
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -30,6 +33,41 @@ export default function StartupDetailModal({ startup, onClose, onDelete, onUpdat
   function saveVideo() {
     onUpdate({ ...startup, videoUrl: videoInput });
     setEditingVideo(false);
+  }
+
+  async function handleRefresh() {
+    if (!startup.websiteUrl) return;
+    setRefreshing(true);
+    setRefreshError("");
+    try {
+      const apiKey = localStorage.getItem(API_KEY_STORAGE) || "";
+      if (!apiKey) { setRefreshError("No API key set."); return; }
+      const res = await fetch("/api/research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: startup.websiteUrl, apiKey }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Refresh failed");
+      onUpdate({
+        ...startup,
+        companyName: data.companyName || startup.companyName,
+        shortDescription: data.shortDescription || startup.shortDescription,
+        longDescription: data.longDescription || startup.longDescription,
+        hq: data.hq || startup.hq,
+        foundingYear: data.foundingYear ?? startup.foundingYear,
+        employees: data.employees || startup.employees,
+        investments: data.investments || startup.investments,
+        logoUrl: data.logoUrl || startup.logoUrl,
+        imageUrls: data.imageUrls ?? startup.imageUrls,
+        tags: data.tags?.length ? data.tags : startup.tags,
+        videoUrl: data.videoUrl || startup.videoUrl,
+      });
+    } catch (e: unknown) {
+      setRefreshError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   async function handleExport() {
@@ -178,7 +216,17 @@ export default function StartupDetailModal({ startup, onClose, onDelete, onUpdat
             )}
           </div>
 
+          {refreshError && (
+            <p className="text-sm text-red-600">{refreshError}</p>
+          )}
           <div className="flex gap-3 pt-2 border-t border-gray-100">
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing || !startup.websiteUrl}
+              className="flex-1 text-center bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {refreshing ? "Refreshing..." : "↻ Refresh"}
+            </button>
             <button
               onClick={handleExport}
               disabled={exporting}

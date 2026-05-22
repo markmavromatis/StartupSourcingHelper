@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { v4 as uuidv4 } from "uuid";
 import { Startup, Project, Tag } from "./types";
 import TagBadge from "./components/TagBadge";
@@ -280,6 +281,7 @@ export default function Home() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
+                    <th className="px-4 py-3 w-12" />
                     {(
                       [
                         ["companyName", "Company"],
@@ -302,6 +304,20 @@ export default function Home() {
                       className="hover:bg-blue-50 cursor-pointer transition-colors"
                       onClick={() => setDetail(s)}
                     >
+                      <td className="px-4 py-3 w-12">
+                        {s.logoUrl ? (
+                          <Image
+                            src={s.logoUrl}
+                            alt={`${s.companyName} logo`}
+                            width={28}
+                            height={28}
+                            className="rounded object-contain"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                        ) : (
+                          <div className="w-7 h-7 rounded bg-gray-100" />
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <span className="font-medium text-gray-900">{s.companyName}</span>
                         {s.websiteUrl && (

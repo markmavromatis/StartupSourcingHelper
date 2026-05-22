@@ -4,6 +4,13 @@ import * as cheerio from "cheerio";
 
 const TAGS = ["AI", "BCI", "Enterprise", "Media", "Mobility", "Sustainability", "Fintech", "Healthtech", "Climate", "Web3", "Robotics", "Space"];
 
+if (!process.env.LOGO_DEV_TOKEN) {
+  console.warn(
+    "[research] LOGO_DEV_TOKEN is not set. Company logos will be unavailable.\n" +
+    "Copy .env.example to .env.local and add your token from https://logo.dev"
+  );
+}
+
 
 interface PageData {
   title: string;
@@ -59,7 +66,17 @@ async function fetchVideoMeta(videoUrl: string): Promise<{ url: string; text: st
   }
 }
 
-async function fetchCompanyLogo(linkedinUrl: string | undefined, imageUrls: string[]): Promise<string> {
+async function fetchCompanyLogo(companyUrl: string, linkedinUrl: string | undefined, imageUrls: string[]): Promise<string> {
+  const logoDevToken = process.env.LOGO_DEV_TOKEN;
+  if (logoDevToken) {
+    try {
+      const domain = new URL(companyUrl).hostname.replace(/^www\./, "");
+      const logoDevUrl = `https://img.logo.dev/${domain}?token=${logoDevToken}`;
+      const res = await fetch(logoDevUrl, { method: "HEAD", signal: AbortSignal.timeout(5000) });
+      if (res.ok) return logoDevUrl;
+    } catch {}
+  }
+
   if (linkedinUrl) {
     try {
       const res = await fetch(linkedinUrl, {
@@ -72,9 +89,9 @@ async function fetchCompanyLogo(linkedinUrl: string | undefined, imageUrls: stri
         const ogImage = $('meta[property="og:image"]').attr("content");
         if (ogImage) return ogImage;
       }
-    } catch {
-    }
+    } catch {}
   }
+
   return imageUrls[0] || "";
 }
 
@@ -209,6 +226,12 @@ export async function POST(req: NextRequest) {
   const { url, apiKey } = await req.json();
   if (!url) return NextResponse.json({ error: "URL required" }, { status: 400 });
   if (!apiKey) return NextResponse.json({ error: "API key required" }, { status: 401 });
+  if (!process.env.LOGO_DEV_TOKEN) {
+    return NextResponse.json(
+      { error: "Server misconfiguration: LOGO_DEV_TOKEN is not set. See .env.example for setup instructions." },
+      { status: 503 }
+    );
+  }
 
   const client = new Anthropic({ apiKey });
 
@@ -291,8 +314,8 @@ Return ONLY valid JSON — no markdown fences, no explanation, nothing before or
   parsed.imageUrls = parsed.imageUrls.slice(0, 3);
   parsed.videoUrl = resolvedVideoUrl;
 
-  // Fetch company logo from LinkedIn og:image (with fallback to first scraped image)
-  const logoUrl = await fetchCompanyLogo(pageData?.linkedinUrl, parsed.imageUrls);
+  // Fetch company logo: Brandfetch CDN → LinkedIn og:image → scraped images
+  const logoUrl = await fetchCompanyLogo(url, pageData?.linkedinUrl, parsed.imageUrls);
   parsed.logoUrl = logoUrl;
 
   return NextResponse.json(parsed);
