@@ -71,9 +71,7 @@ async function fetchCompanyLogo(companyUrl: string, linkedinUrl: string | undefi
   if (logoDevToken) {
     try {
       const domain = new URL(companyUrl).hostname.replace(/^www\./, "");
-      const logoDevUrl = `https://img.logo.dev/${domain}?token=${logoDevToken}`;
-      const res = await fetch(logoDevUrl, { method: "HEAD", signal: AbortSignal.timeout(5000) });
-      if (res.ok) return logoDevUrl;
+      return `https://img.logo.dev/${domain}?token=${logoDevToken}`;
     } catch {}
   }
 
@@ -264,7 +262,7 @@ export async function POST(req: NextRequest) {
     pageDataStr = JSON.stringify(pageData);
   } catch {}
 
-  const prompt = `You are a startup research assistant helping NTT Docomo source investment targets.
+  const prompt = `You are a research assistant helping NTT Docomo source investment targets.
 
 Startup URL: ${url}
 
@@ -277,14 +275,14 @@ IMPORTANT: The scraped page data is the ground truth for what this company does.
 1. Extract company info from the scraped data. In the JSON-LD, look for fields like "foundingDate", "foundedDate", "numberOfEmployees", "address", "addressLocality", "addressCountry".
 2. For hq, foundingYear, and employees ONLY: if not found in the page data, you may use training knowledge about THIS specific company at THIS URL as a secondary source. Even then, if anything in the page contradicts your training knowledge, trust the page.
 3. For hq, foundingYear, and employees: make your best determination. Do NOT output null or leave these blank unless the company is genuinely so obscure you have no information at all. Even an approximate answer (e.g. "~2015", "100–500") is better than blank.
-4. For imageUrls: select the 3 best URLs from the "images" array in the page data (logo, product screenshot, team photo). Fill unused slots with "".
+4. For imageUrls: select the 3 best URLs from the "images" array in the page data (logo, product screenshot, infographic). Fill unused slots with "".
 5. Do not include a videoUrl field — it is handled separately.
 
 Return ONLY valid JSON — no markdown fences, no explanation, nothing before or after the JSON object:
 {
   "companyName": "string",
   "shortDescription": "string — exactly 5 words, catchy tagline",
-  "longDescription": "string — ~200 words on what the company does, its mission, product, market, and why it's interesting for investors",
+  "longDescription": "string — ~200 words on what the company does, its mission, product, market, and competitors. The text should be broken up into 3 paragraphs.",
   "hq": "string — City, Country (e.g. 'San Francisco, USA')",
   "foundingYear": number or null,
   "employees": "string — headcount range (e.g. '50–200', '1,000+', '<50')",
